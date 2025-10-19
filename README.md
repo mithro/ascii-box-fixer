@@ -269,7 +269,7 @@ Contributions are welcome! Please:
 
 ## License
 
-MIT License
+Apache License 2.0
 
 ## Credits
 
