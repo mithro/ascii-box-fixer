@@ -1,9 +1,10 @@
-import unittest
-import tempfile
 import os
-import subprocess
 import shutil
-from fix_ascii_boxes import BoxParser, Box, BoxAligner, FileProcessor
+import subprocess
+import tempfile
+import unittest
+
+from fix_ascii_boxes import BoxAligner, BoxParser, FileProcessor
 
 
 class TestBoxParser(unittest.TestCase):
@@ -239,7 +240,7 @@ class TestFileProcessor(unittest.TestCase):
         processor = FileProcessor()
         processor.process_file(test_file, in_place=True)
 
-        with open(test_file, "r") as f:
+        with open(test_file) as f:
             result = f.read()
 
         self.assertIn("│ X │", result)
@@ -266,7 +267,7 @@ class TestFileProcessor(unittest.TestCase):
         # Verify all files were fixed
         for i in range(3):
             test_file = os.path.join(self.temp_dir, f"test{i}.md")
-            with open(test_file, "r") as f:
+            with open(test_file) as f:
                 result = f.read()
             self.assertIn("│ X │", result)
 
@@ -296,7 +297,7 @@ class TestFileProcessor(unittest.TestCase):
         result = processor.process_file(test_file, in_place=True, dry_run=True)
 
         # File should not be modified
-        with open(test_file, "r") as f:
+        with open(test_file) as f:
             file_content = f.read()
 
         self.assertEqual(file_content, original_content)
@@ -322,7 +323,7 @@ class TestFileProcessor(unittest.TestCase):
         processor = FileProcessor()
         processor.process_file(test_file, in_place=True)
 
-        with open(test_file, "r", encoding="utf-8") as f:
+        with open(test_file, encoding="utf-8") as f:
             result = f.read()
 
         self.assertIn("中文", result)
@@ -997,7 +998,7 @@ class TestCommandLineIntegration(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
 
-        with open(test_file, "r") as f:
+        with open(test_file) as f:
             content = f.read()
         self.assertIn("│ X │", content)
 

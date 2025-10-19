@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-
 # Box drawing characters
 TOP_LEFT = "┌"
 TOP_RIGHT = "┐"
@@ -286,7 +285,6 @@ class BoxAligner:
 
         # Work left to right, rebuilding the line with bars at corner positions
         result = []
-        current_pos = 0
 
         for bar_idx, (bar_pos, corner_pos) in enumerate(zip(bars, corners)):
             # Get content between previous bar and this bar (excluding the bar itself)
@@ -370,7 +368,7 @@ class FileProcessor:
             raise PermissionError(f"File not writable: {file_path}")
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 original = f.read()
         except UnicodeDecodeError as exc:
             raise UnicodeDecodeError(
@@ -499,10 +497,10 @@ def main() -> int:
                 print(f"Error: {path_str} not found", file=sys.stderr)
                 exit_code = 1
 
-        except FileNotFoundError as exc:
+        except FileNotFoundError:
             print(f"Error: File not found: {path_str}", file=sys.stderr)
             exit_code = 1
-        except PermissionError as exc:
+        except PermissionError:
             print(f"Error: Permission denied: {path_str}", file=sys.stderr)
             exit_code = 1
         except UnicodeDecodeError as exc:
