@@ -43,7 +43,7 @@ ASCII box diagrams often have misaligned right borders. This tool automatically 
 Simply copy `fix_ascii_boxes.py` to your project:
 
 ```bash
-wget https://raw.githubusercontent.com/yourusername/fix-ascii-boxes/main/fix_ascii_boxes.py
+wget https://raw.githubusercontent.com/mithro/ascii-box-fixer/main/fix_ascii_boxes.py
 chmod +x fix_ascii_boxes.py
 ```
 
@@ -56,8 +56,8 @@ pip install fix-ascii-boxes
 ### For development
 
 ```bash
-git clone https://github.com/yourusername/fix-ascii-boxes.git
-cd fix-ascii-boxes
+git clone https://github.com/mithro/ascii-box-fixer.git
+cd ascii-box-fixer
 pip install -e .
 ```
 

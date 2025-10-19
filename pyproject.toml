@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "A tool to fix alignment of ASCII box borders in documentation"
 readme = "README.md"
 requires-python = ">=3.7"
-license = "MIT"
+license = "Apache-2.0"
 authors = [
     {name = "ASCII Box Fixer Contributors"}
 ]
@@ -42,7 +42,7 @@ dev = [
 fix-ascii-boxes = "fix_ascii_boxes:main"
 
 [project.urls]
-Repository = "https://github.com/yourusername/fix-ascii-boxes"
+Repository = "https://github.com/mithro/ascii-box-fixer"
 
 [tool.black]
 line-length = 100
