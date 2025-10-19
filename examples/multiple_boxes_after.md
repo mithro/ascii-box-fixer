@@ -21,7 +21,7 @@ This document contains multiple separate boxes with proper alignment:
 ┌────────────────────────┐
 │ System Status          │
 │  ┌────────┐            │
-│  │ Active│            │
+│  │ Active │            │
 │  └────────┘            │
 └────────────────────────┘
 
