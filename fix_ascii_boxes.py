@@ -18,12 +18,12 @@ from typing import List, Optional
 
 
 # Box drawing characters
-TOP_LEFT = '┌'
-TOP_RIGHT = '┐'
-BOTTOM_LEFT = '└'
-BOTTOM_RIGHT = '┘'
-VERTICAL = '│'
-HORIZONTAL = '─'
+TOP_LEFT = "┌"
+TOP_RIGHT = "┐"
+BOTTOM_LEFT = "└"
+BOTTOM_RIGHT = "┘"
+VERTICAL = "│"
+HORIZONTAL = "─"
 
 # File size limit (10MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -41,6 +41,7 @@ class Box:
         nesting_level: Depth of nesting (0 = top level)
         lines: Original lines of the box
     """
+
     start_line: int
     end_line: int
     left_pos: int
@@ -117,9 +118,11 @@ class BoxParser:
         for i in range(start + 1, len(lines)):
             box_lines.append(lines[i])
             # Check if this line has a bottom-left at the expected position
-            if (left_pos < len(lines[i]) and
-                lines[i][left_pos] == BOTTOM_LEFT and
-                BOTTOM_RIGHT in lines[i][left_pos:]):
+            if (
+                left_pos < len(lines[i])
+                and lines[i][left_pos] == BOTTOM_LEFT
+                and BOTTOM_RIGHT in lines[i][left_pos:]
+            ):
                 # Verify the bottom-right is approximately at the right position
                 bottom_right_pos = lines[i].find(BOTTOM_RIGHT, left_pos)
                 if bottom_right_pos != -1:
@@ -147,7 +150,7 @@ class BoxParser:
             left_pos=left_pos,
             top_right_pos=top_right_pos,
             nesting_level=0,  # Calculate later
-            lines=box_lines
+            lines=box_lines,
         )
 
     def _calculate_nesting_levels(self, boxes: List[Box]) -> None:
@@ -171,8 +174,7 @@ class BoxParser:
                 if other is box:
                     continue
                 # Check if box is inside other
-                if (other.start_line < box.start_line and
-                    other.end_line > box.end_line):
+                if other.start_line < box.start_line and other.end_line > box.end_line:
                     nesting += 1
             box.nesting_level = nesting
 
@@ -202,7 +204,7 @@ class BoxAligner:
 
         lines = text.splitlines(keepends=True)
         # Handle case where there are no line endings
-        if not lines or not any(line.endswith('\n') for line in lines):
+        if not lines or not any(line.endswith("\n") for line in lines):
             lines = text.splitlines()
             preserve_newlines = False
         else:
@@ -215,9 +217,9 @@ class BoxAligner:
         self._align_all_lines(lines, boxes)
 
         if preserve_newlines:
-            return ''.join(lines)
+            return "".join(lines)
         else:
-            return '\n'.join(line.rstrip('\n') for line in lines)
+            return "\n".join(line.rstrip("\n") for line in lines)
 
     def _align_all_lines(self, lines: List[str], boxes: List[Box]) -> None:
         """Align all bars to corners on each line, working left to right.
@@ -227,7 +229,7 @@ class BoxAligner:
             boxes: All boxes in the text
         """
         for line_idx in range(len(lines)):
-            line = lines[line_idx].rstrip('\n')
+            line = lines[line_idx].rstrip("\n")
 
             # Find all boxes that contain this line (but not on their border lines)
             active_boxes = []
@@ -253,8 +255,8 @@ class BoxAligner:
             new_line = self._align_bars_to_corners(line, corners)
 
             # Preserve original line ending
-            if lines[line_idx].endswith('\n'):
-                new_line += '\n'
+            if lines[line_idx].endswith("\n"):
+                new_line += "\n"
 
             lines[line_idx] = new_line
 
@@ -292,10 +294,10 @@ class BoxAligner:
             content = line[content_start:bar_pos]
 
             # Strip trailing spaces only - these are flexible padding
-            content = content.rstrip(' ')
+            content = content.rstrip(" ")
 
             # Calculate current position in result
-            result_pos = len(''.join(result))
+            result_pos = len("".join(result))
 
             # Calculate padding needed to place bar at corner_pos
             padding_needed = corner_pos - result_pos - len(content)
@@ -306,14 +308,15 @@ class BoxAligner:
 
             # Add content, padding, and bar
             result.append(content)
-            result.append(' ' * padding_needed)
+            result.append(" " * padding_needed)
             result.append(VERTICAL)
 
         # Add any remaining content after the last bar (strip trailing spaces)
-        remaining = line[bars[-1] + 1:].rstrip(' ')
+        remaining = line[bars[-1] + 1 :].rstrip(" ")
         result.append(remaining)
 
-        return ''.join(result)
+        return "".join(result)
+
 
 class FileProcessor:
     """Processes files to fix ASCII box alignment.
@@ -329,14 +332,10 @@ class FileProcessor:
 
         # Set up logging
         log_level = logging.INFO if verbose else logging.WARNING
-        logging.basicConfig(
-            level=log_level,
-            format='%(levelname)s: %(message)s'
-        )
+        logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
         self.logger = logging.getLogger(__name__)
 
-    def process_file(self, file_path: str, in_place: bool = False,
-                    dry_run: bool = False) -> str:
+    def process_file(self, file_path: str, in_place: bool = False, dry_run: bool = False) -> str:
         """Process a single file.
 
         Args:
@@ -364,21 +363,18 @@ class FileProcessor:
         # Check file size
         file_size = path.stat().st_size
         if file_size > MAX_FILE_SIZE:
-            raise ValueError(
-                f"File too large: {file_size} bytes (max {MAX_FILE_SIZE})"
-            )
+            raise ValueError(f"File too large: {file_size} bytes (max {MAX_FILE_SIZE})")
 
         # Check if file is writable before attempting to modify
         if in_place and not dry_run and not os.access(path, os.W_OK):
             raise PermissionError(f"File not writable: {file_path}")
 
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 original = f.read()
         except UnicodeDecodeError as exc:
             raise UnicodeDecodeError(
-                exc.encoding, exc.object, exc.start, exc.end,
-                f"Cannot decode {file_path} as UTF-8"
+                exc.encoding, exc.object, exc.start, exc.end, f"Cannot decode {file_path} as UTF-8"
             ) from exc
 
         fixed = self.aligner.fix(original)
@@ -391,15 +387,16 @@ class FileProcessor:
 
         if in_place and changed and not dry_run:
             try:
-                with open(path, 'w', encoding='utf-8') as f:
+                with open(path, "w", encoding="utf-8") as f:
                     f.write(fixed)
             except PermissionError as exc:
                 raise PermissionError(f"Cannot write to {file_path}") from exc
 
         return fixed
 
-    def process_directory(self, dir_path: str, pattern: str = '*.md',
-                         in_place: bool = False, dry_run: bool = False) -> int:
+    def process_directory(
+        self, dir_path: str, pattern: str = "*.md", in_place: bool = False, dry_run: bool = False
+    ) -> int:
         """Process all matching files in directory.
 
         Args:
@@ -438,41 +435,29 @@ def main() -> int:
         Exit code (0 for success, non-zero for errors)
     """
     parser = argparse.ArgumentParser(
-        description='Fix ASCII box border alignment in documentation files',
-        epilog='Example: %(prog)s --in-place file.md',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Fix ASCII box border alignment in documentation files",
+        epilog="Example: %(prog)s --in-place file.md",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    parser.add_argument("paths", nargs="+", help="Files or directories to process")
+    parser.add_argument("-i", "--in-place", action="store_true", help="Modify files in place")
     parser.add_argument(
-        'paths',
-        nargs='+',
-        help='Files or directories to process'
+        "-r", "--recursive", action="store_true", help="Process directories recursively"
     )
     parser.add_argument(
-        '-i', '--in-place',
-        action='store_true',
-        help='Modify files in place'
+        "-p",
+        "--pattern",
+        default="*.md",
+        help="File pattern for recursive processing (default: *.md)",
     )
     parser.add_argument(
-        '-r', '--recursive',
-        action='store_true',
-        help='Process directories recursively'
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed without modifying files",
     )
-    parser.add_argument(
-        '-p', '--pattern',
-        default='*.md',
-        help='File pattern for recursive processing (default: *.md)'
-    )
-    parser.add_argument(
-        '-n', '--dry-run',
-        action='store_true',
-        help='Show what would be changed without modifying files'
-    )
-    parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Verbose output'
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
@@ -486,30 +471,25 @@ def main() -> int:
             if path.is_file():
                 # Process single file
                 fixed = processor.process_file(
-                    str(path),
-                    in_place=args.in_place,
-                    dry_run=args.dry_run
+                    str(path), in_place=args.in_place, dry_run=args.dry_run
                 )
 
                 # Print to stdout if not in-place
                 if not args.in_place:
-                    print(fixed, end='')
+                    print(fixed, end="")
 
             elif path.is_dir():
                 if not args.recursive:
                     print(
                         f"Error: {path_str} is a directory. Use --recursive to process directories.",
-                        file=sys.stderr
+                        file=sys.stderr,
                     )
                     exit_code = 1
                     continue
 
                 # Process directory
                 count = processor.process_directory(
-                    str(path),
-                    pattern=args.pattern,
-                    in_place=args.in_place,
-                    dry_run=args.dry_run
+                    str(path), pattern=args.pattern, in_place=args.in_place, dry_run=args.dry_run
                 )
 
                 if args.verbose:
@@ -538,5 +518,5 @@ def main() -> int:
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
