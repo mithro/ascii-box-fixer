@@ -3,8 +3,18 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 from fix_ascii_boxes import BoxAligner, BoxParser, FileProcessor
+
+# Helper to read example files
+EXAMPLES_DIR = Path(__file__).parent / "examples"
+
+
+def read_example(filename):
+    """Read an example file from the examples directory."""
+    with open(EXAMPLES_DIR / filename, encoding="utf-8") as f:
+        return f.read()
 
 
 class TestBoxParser(unittest.TestCase):
@@ -12,14 +22,7 @@ class TestBoxParser(unittest.TestCase):
 
     def test_detect_simple_box(self):
         """Test detection of a simple single box"""
-        text = """\
-Some text before
-┌─────────┐
-│ Content │
-│ More    │
-└─────────┘
-Text after
-"""
+        text = read_example("simple_detection.md")
         parser = BoxParser()
         boxes = parser.parse(text)
 
@@ -32,14 +35,7 @@ Text after
 
     def test_detect_nested_boxes(self):
         """Test detection of nested boxes"""
-        text = """\
-┌────────────────┐
-│ Outer Box      │
-│  ┌──────┐      │
-│  │ Inner│      │
-│  └──────┘      │
-└────────────────┘
-"""
+        text = read_example("nested_detection.md")
         parser = BoxParser()
         boxes = parser.parse(text)
 
@@ -86,15 +82,7 @@ class TestBoxParserEdgeCases(unittest.TestCase):
 
     def test_deeply_nested_boxes(self):
         """Test boxes nested 3+ levels deep"""
-        text = """\
-┌─────────────┐
-│ ┌─────────┐ │
-│ │ ┌─────┐ │ │
-│ │ │ ┌─┐ │ │ │
-│ │ │ └─┘ │ │ │
-│ │ └─────┘ │ │
-│ └─────────┘ │
-└─────────────┘"""
+        text = read_example("deeply_nested.md")
         parser = BoxParser()
         boxes = parser.parse(text)
         self.assertEqual(len(boxes), 4)
@@ -115,18 +103,8 @@ class TestBoxAligner(unittest.TestCase):
 
     def test_align_simple_box(self):
         """Test alignment of a simple box"""
-        input_text = """\
-┌─────────┐
-│ Content │
-│ More   │
-└─────────┘
-"""
-        expected = """\
-┌─────────┐
-│ Content │
-│ More    │
-└─────────┘
-"""
+        input_text = read_example("test_simple_box_before.txt")
+        expected = read_example("test_simple_box_after.txt")
         aligner = BoxAligner()
         result = aligner.fix(input_text)
 
@@ -134,22 +112,8 @@ class TestBoxAligner(unittest.TestCase):
 
     def test_align_nested_boxes(self):
         """Test that nested boxes align independently"""
-        input_text = """\
-┌────────────────┐
-│ Outer Box     │
-│  ┌──────┐     │
-│  │ Inner│     │
-│  └──────┘     │
-└────────────────┘
-"""
-        expected = """\
-┌────────────────┐
-│ Outer Box      │
-│  ┌──────┐      │
-│  │ Inner│      │
-│  └──────┘      │
-└────────────────┘
-"""
+        input_text = read_example("test_nested_boxes_before.txt")
+        expected = read_example("test_nested_boxes_after.txt")
         aligner = BoxAligner()
         result = aligner.fix(input_text)
 
@@ -157,28 +121,8 @@ class TestBoxAligner(unittest.TestCase):
 
     def test_align_multiple_boxes(self):
         """Test alignment of multiple separate boxes"""
-        input_text = """\
-First box:
-┌─────────┐
-│ Box 1  │
-└─────────┘
-
-Second box:
-┌───────────────┐
-│ Box 2        │
-└───────────────┘
-"""
-        expected = """\
-First box:
-┌─────────┐
-│ Box 1   │
-└─────────┘
-
-Second box:
-┌───────────────┐
-│ Box 2         │
-└───────────────┘
-"""
+        input_text = read_example("test_multiple_boxes_before.txt")
+        expected = read_example("test_multiple_boxes_after.txt")
         aligner = BoxAligner()
         result = aligner.fix(input_text)
 
@@ -372,50 +316,8 @@ class TestEdgeCases(unittest.TestCase):
         # This is the ACTUAL box from complete-system-architecture.md
         # The LTSSM inner box has inconsistent right borders (61, 62, 63)
         # The outer box also has inconsistent right borders (64, 65, 66)
-        input_text = """\
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                         │
-│                    Location: litepcie/dll/                       │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐│
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         ││
-│  │              │  │              │  │                        ││
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           ││
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        ││
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  ││
-│  └──────────────┘  └──────────────┘  └────────────────────────┘│
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              LTSSM (Link Training State Machine)         │  │
-│  │                                                           │  │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY      │  │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.             │
-└────────────────────────────┬────────────────────────────────────┘"""
-        expected = """\
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                        │
-│                    Location: litepcie/dll/                      │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         │ │
-│  │              │  │              │  │                        │ │
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           │ │
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        │ │
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  │ │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              LTSSM (Link Training State Machine)         │   │
-│  │                                                          │   │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY       │   │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.              │
-└────────────────────────────┬────────────────────────────────────┘"""
+        input_text = read_example("data_link_layer_before.md")
+        expected = read_example("data_link_layer_after.md")
 
         aligner = BoxAligner()
         result = aligner.fix(input_text)
@@ -424,48 +326,8 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_complex_nested_box_with_malformed_inner_box2(self):
         """Test malformed nested box from real docs - inner box has inconsistent borders"""
-        input_text = """\
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                        │
-│                    Location: litepcie/phy/transceiver_base/      │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              PIPETransceiver Base Class                   │  │
-│  │                                                           │  │
-│  │  Common interface for all transceivers                   │  │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)          │  │
-│  │  • Reset sequencing (PLL → PCS → CDR)                   │  │
-│  │  • Speed control (Gen1/Gen2 switching)                   │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │  │
-│  │                  │  │                  │  │              │  │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │  │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘"""
-        expected = """\
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                       │
-│                    Location: litepcie/phy/transceiver_base/     │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PIPETransceiver Base Class                  │   │
-│  │                                                          │   │
-│  │  Common interface for all transceivers                   │   │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)            │   │
-│  │  • Reset sequencing (PLL → PCS → CDR)                    │   │
-│  │  • Speed control (Gen1/Gen2 switching)                   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │   │
-│  │                  │  │                  │  │              │   │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │   │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘"""
+        input_text = read_example("transceiver_base_layer_before.md")
+        expected = read_example("transceiver_base_layer_after.md")
 
         aligner = BoxAligner()
         result = aligner.fix(input_text)
@@ -473,240 +335,8 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_complex_nested_box_with_malformed_inner_box3(self):
         """Test malformed nested box from real docs - inner box has inconsistent borders"""
-        input_text = """\
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      APPLICATION LAYER                          │
-│                                                                  │
-│  User Logic: DMA Engines, Memory Controllers, Custom Logic      │
-│  Interface: TLP-level read/write requests                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-512 bit TLP interface
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSACTION LAYER (TLP)                       │
-│                    Location: litepcie/tlp/                       │
-│                                                                  │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │  TLP Packetizer  │  │ TLP Depacketizer │  │ Flow Control │  │
-│  │                  │  │                  │  │              │  │
-│  │ • Header gen     │  │ • Header parse   │  │ • Credits    │  │
-│  │ • CRC calc       │  │ • CRC check      │  │ • Throttling │  │
-│  │ • Routing        │  │ • Type decode    │  │              │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘  │
-│                                                                  │
-│  TLP Types: Memory Read/Write, Config, Completion, Messages     │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets (phy_layout)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                         │
-│                    Location: litepcie/dll/                       │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐│
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         ││
-│  │              │  │              │  │                        ││
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           ││
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        ││
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  ││
-│  └──────────────┘  └──────────────┘  └────────────────────────┘│
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              LTSSM (Link Training State Machine)         │  │
-│  │                                                           │  │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY      │  │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets + ordered sets
-┌────────────────────────────▼────────────────────────────────────┐
-│                      PIPE INTERFACE LAYER                        │
-│                      Location: litepcie/dll/pipe.py              │
-│                                                                  │
-│  ┌──────────────────┐         ┌──────────────────┐             │
-│  │  TX Packetizer   │         │  RX Depacketizer │             │
-│  │                  │         │                  │             │
-│  │ • 64→8 bit conv  │         │ • 8→64 bit conv  │             │
-│  │ • STP/SDP/END    │         │ • START detect   │             │
-│  │ • K-char framing │         │ • Symbol accum   │             │
-│  └──────────────────┘         └──────────────────┘             │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │           Ordered Set Generation/Detection               │  │
-│  │                                                           │  │
-│  │  • SKP insertion (every 1180 symbols)                    │  │
-│  │  • TS1/TS2 generation (link training)                    │  │
-│  │  • COM symbol handling (alignment)                       │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  Interface: 8-bit data + K-char flag + control signals          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ PIPE signals (8-bit + ctrl)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                        │
-│                    Location: litepcie/phy/transceiver_base/      │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              PIPETransceiver Base Class                   │  │
-│  │                                                           │  │
-│  │  Common interface for all transceivers                   │  │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)          │  │
-│  │  • Reset sequencing (PLL → PCS → CDR)                   │  │
-│  │  • Speed control (Gen1/Gen2 switching)                   │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │  │
-│  │                  │  │                  │  │              │  │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │  │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 10-bit encoded symbols
-┌────────────────────────────▼────────────────────────────────────┐
-│                    SERDES/TRANSCEIVER LAYER                      │
-│            Location: litepcie/phy/xilinx/, litepcie/phy/lattice/ │
-│                                                                  │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │  Xilinx GTX      │  │ Xilinx GTY       │  │ ECP5 SERDES  │  │
-│  │  (7-Series)      │  │ (UltraScale+)    │  │ (Lattice)    │  │
-│  │                  │  │                  │  │              │  │
-│  │ • GTXE2 wrapper  │  │ • GTYE4 wrapper  │  │ • DCUA wrap  │  │
-│  │ • CPLL/QPLL      │  │ • QPLL0/QPLL1    │  │ • SCI config │  │
-│  │ • Gen1/Gen2      │  │ • Gen1/Gen2/Gen3 │  │ • Gen1/Gen2  │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘  │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Physical Layer Functions                     │  │
-│  │                                                           │  │
-│  │  • Serialization/Deserialization (10 Gbps line rate)     │  │
-│  │  • Clock recovery (RX CDR)                               │  │
-│  │  • Equalization (DFE, CTLE)                              │  │
-│  │  • Electrical idle detection                              │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ Differential serial (TX+/-, RX+/-)
-                             ▼
-                    Physical PCIe Link
-                    (PCB traces, connector)
-```"""
-        expected = """\
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      APPLICATION LAYER                          │
-│                                                                 │
-│  User Logic: DMA Engines, Memory Controllers, Custom Logic      │
-│  Interface: TLP-level read/write requests                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-512 bit TLP interface
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSACTION LAYER (TLP)                      │
-│                    Location: litepcie/tlp/                      │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  TLP Packetizer  │  │ TLP Depacketizer │  │ Flow Control │   │
-│  │                  │  │                  │  │              │   │
-│  │ • Header gen     │  │ • Header parse   │  │ • Credits    │   │
-│  │ • CRC calc       │  │ • CRC check      │  │ • Throttling │   │
-│  │ • Routing        │  │ • Type decode    │  │              │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  TLP Types: Memory Read/Write, Config, Completion, Messages     │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets (phy_layout)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                        │
-│                    Location: litepcie/dll/                      │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         │ │
-│  │              │  │              │  │                        │ │
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           │ │
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        │ │
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  │ │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              LTSSM (Link Training State Machine)         │   │
-│  │                                                          │   │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY       │   │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets + ordered sets
-┌────────────────────────────▼────────────────────────────────────┐
-│                      PIPE INTERFACE LAYER                       │
-│                      Location: litepcie/dll/pipe.py             │
-│                                                                 │
-│  ┌──────────────────┐         ┌──────────────────┐              │
-│  │  TX Packetizer   │         │  RX Depacketizer │              │
-│  │                  │         │                  │              │
-│  │ • 64→8 bit conv  │         │ • 8→64 bit conv  │              │
-│  │ • STP/SDP/END    │         │ • START detect   │              │
-│  │ • K-char framing │         │ • Symbol accum   │              │
-│  └──────────────────┘         └──────────────────┘              │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           Ordered Set Generation/Detection               │   │
-│  │                                                          │   │
-│  │  • SKP insertion (every 1180 symbols)                    │   │
-│  │  • TS1/TS2 generation (link training)                    │   │
-│  │  • COM symbol handling (alignment)                       │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Interface: 8-bit data + K-char flag + control signals          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ PIPE signals (8-bit + ctrl)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                       │
-│                    Location: litepcie/phy/transceiver_base/     │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PIPETransceiver Base Class                  │   │
-│  │                                                          │   │
-│  │  Common interface for all transceivers                   │   │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)            │   │
-│  │  • Reset sequencing (PLL → PCS → CDR)                    │   │
-│  │  • Speed control (Gen1/Gen2 switching)                   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │   │
-│  │                  │  │                  │  │              │   │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │   │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 10-bit encoded symbols
-┌────────────────────────────▼────────────────────────────────────┐
-│                    SERDES/TRANSCEIVER LAYER                     │
-│            Location: litepcie/phy/xilinx/, litepcie/phy/lattice/│
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  Xilinx GTX      │  │ Xilinx GTY       │  │ ECP5 SERDES  │   │
-│  │  (7-Series)      │  │ (UltraScale+)    │  │ (Lattice)    │   │
-│  │                  │  │                  │  │              │   │
-│  │ • GTXE2 wrapper  │  │ • GTYE4 wrapper  │  │ • DCUA wrap  │   │
-│  │ • CPLL/QPLL      │  │ • QPLL0/QPLL1    │  │ • SCI config │   │
-│  │ • Gen1/Gen2      │  │ • Gen1/Gen2/Gen3 │  │ • Gen1/Gen2  │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Physical Layer Functions                    │   │
-│  │                                                          │   │
-│  │  • Serialization/Deserialization (10 Gbps line rate)     │   │
-│  │  • Clock recovery (RX CDR)                               │   │
-│  │  • Equalization (DFE, CTLE)                              │   │
-│  │  • Electrical idle detection                             │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ Differential serial (TX+/-, RX+/-)
-                             ▼
-                    Physical PCIe Link
-                    (PCB traces, connector)
-```"""
+        input_text = read_example("complete_system_architecture_before.md")
+        expected = read_example("complete_system_architecture_after.md")
 
         aligner = BoxAligner()
         result = aligner.fix(input_text)
@@ -714,240 +344,8 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_complex_nested_box_with_malformed_inner_box4(self):
         """Test malformed nested box from real docs - inner box has inconsistent borders"""
-        input_text = """\
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      APPLICATION LAYER                          │
-│                                                                 │
-│  User Logic: DMA Engines, Memory Controllers, Custom Logic      │
-│  Interface: TLP-level read/write requests                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-512 bit TLP interface
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSACTION LAYER (TLP)                      │
-│                    Location: litepcie/tlp/                      │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  TLP Packetizer  │  │ TLP Depacketizer │  │ Flow Control │   │
-│  │                  │  │                  │  │              │   │
-│  │ • Header gen     │  │ • Header parse   │  │ • Credits    │   │
-│  │ • CRC calc       │  │ • CRC check      │  │ • Throttling │   │
-│  │ • Routing        │  │ • Type decode    │  │              │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  TLP Types: Memory Read/Write, Config, Completion, Messages     │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets (phy_layout)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                        │
-│                    Location: litepcie/dll/                      │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         │ │
-│  │              │  │              │  │                        │ │
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           │ │
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        │ │
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  │ │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              LTSSM (Link Training State Machine)         │   │
-│  │                                                          │   │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY       │   │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets + ordered sets
-┌────────────────────────────▼────────────────────────────────────┐
-│                      PIPE INTERFACE LAYER                       │
-│                      Location: litepcie/dll/pipe.py             │
-│                                                                 │
-│  ┌──────────────────┐         ┌──────────────────┐              │
-│  │  TX Packetizer   │         │  RX Depacketizer │              │
-│  │                  │         │                  │              │
-│  │ • 64→8 bit conv  │         │ • 8→64 bit conv  │              │
-│  │ • STP/SDP/END    │         │ • START detect   │              │
-│  │ • K-char framing │         │ • Symbol accum   │              │
-│  └──────────────────┘         └──────────────────┘              │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           Ordered Set Generation/Detection               │   │
-│  │                                                          │   │
-│  │  • SKP insertion (every 1180 symbols)                    │   │
-│  │  • TS1/TS2 generation (link training)                    │   │
-│  │  • COM symbol handling (alignment)                       │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Interface: 8-bit data + K-char flag + control signals          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ PIPE signals (8-bit + ctrl)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                       │
-│                    Location: litepcie/phy/transceiver_base/     │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PIPETransceiver Base Class                  │   │
-│  │                                                          │   │
-│  │  Common interface for all transceivers                   │   │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)                │     │
-│  │  • Reset sequencing (PLL → PCS → CDR)                    │   │
-│  │  • Speed control (Gen1/Gen2 switching)                   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │   │
-│  │                  │  │                  │  │              │   │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │   │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 10-bit encoded symbols
-┌────────────────────────────▼────────────────────────────────────┐
-│                    SERDES/TRANSCEIVER LAYER                     │
-│            Location: litepcie/phy/xilinx/, litepcie/phy/lattice/│
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  Xilinx GTX      │  │ Xilinx GTY       │  │ ECP5 SERDES  │   │
-│  │  (7-Series)      │  │ (UltraScale+)    │  │ (Lattice)    │   │
-│  │                  │  │                  │  │              │   │
-│  │ • GTXE2 wrapper  │  │ • GTYE4 wrapper  │  │ • DCUA wrap  │   │
-│  │ • CPLL/QPLL      │  │ • QPLL0/QPLL1    │  │ • SCI config │   │
-│  │ • Gen1/Gen2      │  │ • Gen1/Gen2/Gen3 │  │ • Gen1/Gen2  │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Physical Layer Functions                    │   │
-│  │                                                          │   │
-│  │  • Serialization/Deserialization (10 Gbps line rate)     │   │
-│  │  • Clock recovery (RX CDR)                               │   │
-│  │  • Equalization (DFE, CTLE)                              │   │
-│  │  • Electrical idle detection                             │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ Differential serial (TX+/-, RX+/-)
-                             ▼
-                    Physical PCIe Link
-                    (PCB traces, connector)
-```"""
-        expected = """\
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      APPLICATION LAYER                          │
-│                                                                 │
-│  User Logic: DMA Engines, Memory Controllers, Custom Logic      │
-│  Interface: TLP-level read/write requests                       │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-512 bit TLP interface
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSACTION LAYER (TLP)                      │
-│                    Location: litepcie/tlp/                      │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  TLP Packetizer  │  │ TLP Depacketizer │  │ Flow Control │   │
-│  │                  │  │                  │  │              │   │
-│  │ • Header gen     │  │ • Header parse   │  │ • Credits    │   │
-│  │ • CRC calc       │  │ • CRC check      │  │ • Throttling │   │
-│  │ • Routing        │  │ • Type decode    │  │              │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  TLP Types: Memory Read/Write, Config, Completion, Messages     │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets (phy_layout)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    DATA LINK LAYER (DLL)                        │
-│                    Location: litepcie/dll/                      │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │   DLL TX     │  │   DLL RX     │  │   Retry Buffer         │ │
-│  │              │  │              │  │                        │ │
-│  │ • LCRC gen   │  │ • LCRC check │  │ • Store TLPs           │ │
-│  │ • Seq num    │  │ • ACK/NAK    │  │ • Replay on NAK        │ │
-│  │ • DLLP gen   │  │ • DLLP parse │  │ • 4KB circular buffer  │ │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              LTSSM (Link Training State Machine)         │   │
-│  │                                                          │   │
-│  │  States: DETECT → POLLING → CONFIG → L0 → RECOVERY       │   │
-│  │  Controls: Speed negotiation, TS1/TS2 exchange           │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  DLLP Types: ACK, NAK, UpdateFC, PM_Enter_L1, etc.              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 64-bit packets + ordered sets
-┌────────────────────────────▼────────────────────────────────────┐
-│                      PIPE INTERFACE LAYER                       │
-│                      Location: litepcie/dll/pipe.py             │
-│                                                                 │
-│  ┌──────────────────┐         ┌──────────────────┐              │
-│  │  TX Packetizer   │         │  RX Depacketizer │              │
-│  │                  │         │                  │              │
-│  │ • 64→8 bit conv  │         │ • 8→64 bit conv  │              │
-│  │ • STP/SDP/END    │         │ • START detect   │              │
-│  │ • K-char framing │         │ • Symbol accum   │              │
-│  └──────────────────┘         └──────────────────┘              │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │           Ordered Set Generation/Detection               │   │
-│  │                                                          │   │
-│  │  • SKP insertion (every 1180 symbols)                    │   │
-│  │  • TS1/TS2 generation (link training)                    │   │
-│  │  • COM symbol handling (alignment)                       │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Interface: 8-bit data + K-char flag + control signals          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ PIPE signals (8-bit + ctrl)
-┌────────────────────────────▼────────────────────────────────────┐
-│                    TRANSCEIVER BASE LAYER                       │
-│                    Location: litepcie/phy/transceiver_base/     │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              PIPETransceiver Base Class                  │   │
-│  │                                                          │   │
-│  │  Common interface for all transceivers                   │   │
-│  │  • TX/RX datapaths (CDC: sys_clk ↔ tx/rx_clk)            │   │
-│  │  • Reset sequencing (PLL → PCS → CDR)                    │   │
-│  │  • Speed control (Gen1/Gen2 switching)                   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │ TX Datapath      │  │ RX Datapath      │  │ 8b/10b       │   │
-│  │                  │  │                  │  │              │   │
-│  │ • AsyncFIFO CDC  │  │ • AsyncFIFO CDC  │  │ • Encoder    │   │
-│  │ • sys→tx domain  │  │ • rx→sys domain  │  │ • Decoder    │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 10-bit encoded symbols
-┌────────────────────────────▼────────────────────────────────────┐
-│                    SERDES/TRANSCEIVER LAYER                     │
-│            Location: litepcie/phy/xilinx/, litepcie/phy/lattice/│
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-│  │  Xilinx GTX      │  │ Xilinx GTY       │  │ ECP5 SERDES  │   │
-│  │  (7-Series)      │  │ (UltraScale+)    │  │ (Lattice)    │   │
-│  │                  │  │                  │  │              │   │
-│  │ • GTXE2 wrapper  │  │ • GTYE4 wrapper  │  │ • DCUA wrap  │   │
-│  │ • CPLL/QPLL      │  │ • QPLL0/QPLL1    │  │ • SCI config │   │
-│  │ • Gen1/Gen2      │  │ • Gen1/Gen2/Gen3 │  │ • Gen1/Gen2  │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              Physical Layer Functions                    │   │
-│  │                                                          │   │
-│  │  • Serialization/Deserialization (10 Gbps line rate)     │   │
-│  │  • Clock recovery (RX CDR)                               │   │
-│  │  • Equalization (DFE, CTLE)                              │   │
-│  │  • Electrical idle detection                             │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ Differential serial (TX+/-, RX+/-)
-                             ▼
-                    Physical PCIe Link
-                    (PCB traces, connector)
-```"""
+        input_text = read_example("complete_system_architecture2_before.md")
+        expected = read_example("complete_system_architecture2_after.md")
 
         aligner = BoxAligner()
         result = aligner.fix(input_text)
