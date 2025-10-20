@@ -158,6 +158,15 @@ class TestBottomRowAlignment(unittest.TestCase):
 
         self.assertEqual(result, input_text)
 
+    def test_simple_bottom_row_too_long(self):
+        """Test simple box with bottom row longer than top"""
+        input_text = "┌──────┐\n│ Text │\n└──────────┘\n"
+        expected = "┌──────┐\n│ Text │\n└──────┘\n"
+        aligner = BoxAligner()
+        result = aligner.fix(input_text)
+
+        self.assertEqual(result, expected)
+
 
 class TestAlignmentEdgeCases(unittest.TestCase):
     """Test edge cases in box alignment"""
