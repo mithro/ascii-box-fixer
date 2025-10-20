@@ -1,0 +1,21 @@
+┌─────────────────────────────────────────────────────────────────────┐
+│                            LTSSM                                    │
+│                     Location: dll/ltssm.py                          │
+│                                                                     │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │        Link Training and Status State Machine                  │ │
+│  │                                                                │ │
+│  │  States: DETECT → POLLING → CONFIGURATION → L0 → RECOVERY      │ │
+│  │                                                                │ │
+│  │  Controls:                          Monitors:                  │ │
+│  │  • send_ts1 / send_ts2              • ts1_detected             │ │
+│  │  • tx_elecidle                      • ts2_detected             │ │
+│  │  • powerdown                        • rx_elecidle              │ │
+│  │                                                                │ │
+│  │  Status:                                                       │ │
+│  │  • link_up (L0 operational)                                    │ │
+│  │  • link_speed (Gen1/Gen2)                                      │ │
+│  │  • link_width (x1/x4/x8/x16)                                   │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+└─────────────────────────────────┬───────────────────────────────────┘

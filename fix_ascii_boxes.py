@@ -1,11 +1,11 @@
 """ASCII Box Border Fixer
 
-Fixes misaligned right borders in ASCII box diagrams by aligning
-all vertical borders (│) to the position of the top-right corner (┐).
+Fixes misaligned borders in ASCII box diagrams by:
+1. Aligning all vertical borders (│) to the position of the top-right corner (┐)
+2. Adjusting bottom row length so bottom-right corner (┘) aligns with top-right corner (┐)
 
 This tool detects ASCII box diagrams in text files and ensures all
-vertical borders align correctly with their top-right corners, including
-proper handling of nested box structures.
+borders align correctly, including proper handling of nested box structures.
 """
 
 import argparse
@@ -211,9 +211,11 @@ class BoxAligner:
 
         boxes = self.parser.parse(text)
 
-        # Instead of processing boxes individually, process each line and align
-        # all bars to all corners on that line (working left to right)
+        # Step 1: Align vertical bars to top-right corners
         self._align_all_lines(lines, boxes)
+
+        # Step 2: Fix bottom row lengths to align bottom-right corners
+        self._fix_bottom_rows(lines, boxes)
 
         if preserve_newlines:
             return "".join(lines)
@@ -314,6 +316,119 @@ class BoxAligner:
         result.append(remaining)
 
         return "".join(result)
+
+    def _fix_bottom_rows(self, lines: List[str], boxes: List[Box]) -> None:
+        """Fix bottom row lengths to align bottom-right corners with top-right corners.
+
+        Args:
+            lines: All lines (modified in place)
+            boxes: All boxes in the text
+        """
+        for box in boxes:
+            line_idx = box.end_line
+            if line_idx >= len(lines):
+                continue
+
+            line = lines[line_idx].rstrip("\n")
+
+            # Check if this line has bottom-left at expected position
+            if box.left_pos >= len(line) or line[box.left_pos] != BOTTOM_LEFT:
+                continue
+
+            # Find bottom-right corner
+            bottom_right_pos = line.find(BOTTOM_RIGHT, box.left_pos)
+            if bottom_right_pos == -1:
+                continue
+
+            # Check if already aligned
+            if bottom_right_pos == box.top_right_pos:
+                continue
+
+            # Extract content between bottom-left and bottom-right
+            content = line[box.left_pos + 1 : bottom_right_pos]
+
+            # Rebuild the bottom row with correct length
+            target_length = box.top_right_pos - box.left_pos - 1
+            new_content = self._adjust_horizontal_line(content, target_length)
+
+            # Build new line
+            new_line = line[: box.left_pos + 1] + new_content + BOTTOM_RIGHT
+            if bottom_right_pos + 1 < len(line):
+                new_line += line[bottom_right_pos + 1 :]
+
+            # Preserve original line ending
+            if lines[line_idx].endswith("\n"):
+                new_line += "\n"
+
+            lines[line_idx] = new_line
+
+    def _adjust_horizontal_line(self, content: str, target_length: int) -> str:
+        """Adjust horizontal line content to target length.
+
+        Preserves special box drawing characters (┬, ┴, ┼, etc.) and adjusts
+        the number of horizontal lines (─) to reach the target length.
+
+        Args:
+            content: Content between └ and ┘
+            target_length: Desired length of content
+
+        Returns:
+            Adjusted content with correct length
+        """
+        if len(content) == target_length:
+            return content
+
+        # Characters that should be preserved in horizontal lines
+        special_chars = {"┬", "┴", "┼", "├", "┤"}
+
+        if len(content) > target_length:
+            # Content is too long - need to shrink
+            # Remove horizontal lines from the end
+            result = []
+            for ch in content:
+                if len(result) >= target_length:
+                    break
+                result.append(ch)
+            return "".join(result)
+
+        else:
+            # Content is too short - need to expand
+            # Find positions of special characters
+            special_positions = [(i, ch) for i, ch in enumerate(content) if ch in special_chars]
+
+            if not special_positions:
+                # No special characters - just fill with horizontal lines
+                return HORIZONTAL * target_length
+
+            # Build result by segments
+            result = []
+            prev_end = 0
+
+            for pos, special_char in special_positions:
+                # Calculate how many chars before this special char
+                segment_content = content[prev_end:pos]
+                result.append(segment_content)
+                result.append(special_char)
+                prev_end = pos + 1
+
+            # Add remaining content after last special char
+            result.append(content[prev_end:])
+
+            # Join and check length
+            current = "".join(result)
+            current_length = len(current)
+
+            if current_length < target_length:
+                # Need to add more horizontal lines
+                # Add them before the first special char if any, otherwise at the end
+                to_add = target_length - current_length
+                if special_positions:
+                    # Insert before first special char
+                    result[0] = result[0] + (HORIZONTAL * to_add)
+                else:
+                    result.append(HORIZONTAL * to_add)
+
+            return "".join(result)
 
 
 class FileProcessor:
